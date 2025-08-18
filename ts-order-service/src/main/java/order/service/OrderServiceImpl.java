@@ -466,5 +466,15 @@ public class OrderServiceImpl implements OrderService {
             return new Response<>(1, "Admin Update Order Success", oldOrder);
         }
     }
+    
+    @Override
+    public Response queryOrdersByAccountAndTravelDate(String accountId, Date startDate, Date endDate, HttpHeaders headers) {
+        OrderServiceImpl.LOGGER.info("[queryOrdersByAccountAndTravelDate][Query Orders By Account And Travel Date][AccountId: {}, StartDate: {}, EndDate: {}]", 
+                                    accountId, startDate, endDate);
+        // Query orders using the repository method
+        ArrayList<Order> orders = orderRepository.findByAccountIdAndTravelDateBetween(accountId, StringUtils.Date2String(startDate), StringUtils.Date2String(endDate));
+        
+        OrderServiceImpl.LOGGER.info("[queryOrdersByAccountAndTravelDate][Query Orders Result][Found: {} orders]", orders.size());
+        return new Response<>(1, "Query Orders By Account And Travel Date Success", orders);
+    }
 }
-
