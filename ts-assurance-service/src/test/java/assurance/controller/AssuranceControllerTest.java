@@ -1,5 +1,6 @@
 package assurance.controller;
 
+import assurance.entity.PlainAssurance;
 import assurance.service.AssuranceService;
 import com.alibaba.fastjson.JSONObject;
 import edu.fudan.common.util.Response;
@@ -12,15 +13,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpEntity;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 @RunWith(JUnit4.class)
@@ -54,6 +55,23 @@ public class AssuranceControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andReturn().getResponse().getContentAsString();
         Assert.assertEquals(response, JSONObject.parseObject(result, Response.class));
+    }
+
+    @Test
+    public void testGetAssurancesPaginated() throws Exception {
+        PageImpl<PlainAssurance> page = new PageImpl<>(
+                Arrays.asList(new PlainAssurance(), new PlainAssurance()),
+                PageRequest.of(0, 2),
+                3
+        );
+        UUID userId = UUID.randomUUID();
+        Mockito.when(assuranceService.getUserAssurancesPage(Mockito.eq(userId), Mockito.eq(0), Mockito.eq(2), Mockito.any(HttpHeaders.class)))
+                .thenReturn(page);
+        String result = mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/assuranceservice/assurances/userid/" + userId + "?page=0&size=2"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Assert.assertTrue(result.contains("\"content\""));
+        Assert.assertTrue(result.contains("\"totalElements\":3"));
     }
 
     @Test

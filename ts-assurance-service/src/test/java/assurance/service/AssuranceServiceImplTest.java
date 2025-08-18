@@ -15,9 +15,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -180,6 +184,32 @@ public class AssuranceServiceImplTest {
         assuranceTypeBeanList.add(assuranceTypeBean);
         Response result = assuranceServiceImpl.getAllAssuranceTypes(headers);
         Assert.assertEquals(new Response<>(1, "Find All Assurance", assuranceTypeBeanList), result);
+    }
+
+    @Test
+    public void testGetAssurancesPage_BoundaryDefaults() {
+        // size <= 0 and page < 0 should default to page=0,size=10
+        Mockito.when(assuranceRepository.findAssurancesByOrderIdIn(Mockito.anyCollection(), Mockito.any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<Assurance>(new ArrayList<>(), PageRequest.of(0, 10), 0));
+        org.springframework.data.domain.Page<PlainAssurance> page = assuranceServiceImpl.getUserAssurancesPage(UUID.randomUUID(), -1, 0, headers);
+        Assert.assertEquals(0, page.getNumber());
+        Assert.assertEquals(10, page.getSize());
+        Assert.assertEquals(0, page.getTotalElements());
+    }
+
+    @Test
+    public void testGetAssurancesPage_LastPagePartial() {
+        ArrayList<Assurance> data = new ArrayList<>();
+        data.add(new Assurance("a1", "o1", AssuranceType.TRAFFIC_ACCIDENT));
+        // Simulate total 3, page 1 size 2 -> 1 element
+        Mockito.when(assuranceRepository.findAssurancesByOrderIdIn(Mockito.anyCollection(), Mockito.any(Pageable.class)))
+                .thenReturn(new PageImpl<>(data, PageRequest.of(1, 2), 3));
+        org.springframework.data.domain.Page<PlainAssurance> page = assuranceServiceImpl.getUserAssurancesPage(UUID.randomUUID(), 1, 2, headers);
+        Assert.assertEquals(1, page.getNumber());
+        Assert.assertEquals(2, page.getSize());
+        Assert.assertEquals(3, page.getTotalElements());
+        Assert.assertEquals(1, page.getContent().size());
+        Assert.assertEquals("a1", page.getContent().get(0).getId());
     }
 
 }

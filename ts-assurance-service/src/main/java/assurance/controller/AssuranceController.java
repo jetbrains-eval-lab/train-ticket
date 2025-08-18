@@ -36,6 +36,27 @@ public class AssuranceController {
         return ok(assuranceService.getAllAssurances(headers));
     }
 
+
+    @CrossOrigin(origins = "*")
+    @GetMapping(path = "/assurances/userid/{userId}")
+    public HttpEntity getUserAssurances(@PathVariable String userId,
+                                       @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
+                                       @RequestParam(value = "size", required = false, defaultValue = "10") Integer size,
+                                       @RequestHeader HttpHeaders headers) {
+        try {
+            UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            AssuranceController.LOGGER.error("[getUserAssurances][Get User's Assurances][UserId is not UUID: {}]", userId);
+            return ok("UserId is not an UUID, please check it and try again");
+        }
+        if (page != null || size != null) {
+            AssuranceController.LOGGER.info("[getUserAssurances][Get User's Assurances Paginated][page: {}, size: {}]", page, size);
+            return ok(assuranceService.getUserAssurancesPage(UUID.fromString(userId), page, size, headers));
+        }
+        AssuranceController.LOGGER.info("[getUserAssurances][Get User's Assurances]");
+        return ok("Invalid page params, page: " + page + ", size: " + size );
+    }
+
     @CrossOrigin(origins = "*")
     @GetMapping(path = "/assurances/types")
     public HttpEntity getAllAssuranceType(@RequestHeader HttpHeaders headers) {
