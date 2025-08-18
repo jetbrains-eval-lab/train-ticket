@@ -373,4 +373,67 @@ public class OrderServiceImplTest {
         Assert.assertEquals("Admin Update Order Success", result.getMsg());
     }
 
+    @Test
+    public void testQueryOrdersByAccountAndTravelDate1() {
+        // Arrange
+        String accountId = "user_id_1";
+        Date startDate = new Date();
+        Date endDate = new Date(startDate.getTime() + 86400000); // next day
+        HttpHeaders headers = new HttpHeaders();
+        
+        ArrayList<Order> mockOrders = new ArrayList<>();
+        Order mockOrder = new Order();
+        mockOrder.setAccountId(accountId);
+        mockOrder.setTravelDate("2023-05-05");
+        mockOrders.add(mockOrder);
+        
+        // Mock repository response
+        Mockito.when(orderRepository.findByAccountIdAndTravelDateBetween(
+            Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
+            .thenReturn(mockOrders);
+        
+        // Act
+        Response response = orderServiceImpl.queryOrdersByAccountAndTravelDate(accountId, startDate, endDate, headers);
+        
+        // Assert
+        Assert.assertNotNull(response);
+        Assert.assertEquals(new Integer(1), response.getStatus());
+        Assert.assertEquals("Query Orders By Account And Travel Date Success", response.getMsg());
+        Assert.assertEquals(mockOrders, response.getData());
+        
+        // Verify repository was called
+        Mockito.verify(orderRepository, times(1)).findByAccountIdAndTravelDateBetween(
+            Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+    }
+    
+    @Test
+    public void testQueryOrdersByAccountAndTravelDate2() {
+        // Arrange
+        String accountId = "user_id_1";
+        Date startDate = new Date();
+        Date endDate = new Date(startDate.getTime() + 86400000); // next day
+        HttpHeaders headers = new HttpHeaders();
+        
+        // Empty result
+        ArrayList<Order> emptyOrders = new ArrayList<>();
+        
+        // Mock repository response - empty list
+        Mockito.when(orderRepository.findByAccountIdAndTravelDateBetween(
+            Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
+            .thenReturn(emptyOrders);
+        
+        // Act
+        Response response = orderServiceImpl.queryOrdersByAccountAndTravelDate(accountId, startDate, endDate, headers);
+        
+        // Assert
+        Assert.assertNotNull(response);
+        Assert.assertEquals(new Integer(1), response.getStatus());
+        Assert.assertEquals("Query Orders By Account And Travel Date Success", response.getMsg());
+        Assert.assertEquals(emptyOrders, response.getData());
+        Assert.assertEquals(0, ((ArrayList<Order>)response.getData()).size());
+        
+        // Verify repository was called
+        Mockito.verify(orderRepository, times(1)).findByAccountIdAndTravelDateBetween(
+            Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+    }
 }

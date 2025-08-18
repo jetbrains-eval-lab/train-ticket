@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import edu.fudan.common.entity.Seat;
 import edu.fudan.common.util.Response;
 import order.entity.Order;
+import order.entity.OrderByAccountAndDateRangeInfo;
 import order.entity.OrderInfo;
 import order.service.OrderService;
 import org.junit.Assert;
@@ -99,6 +100,31 @@ public class OrderControllerTest {
         String result = mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/orderservice/order/refresh").contentType(MediaType.APPLICATION_JSON).content(requestJson))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andReturn().getResponse().getContentAsString();
+        Assert.assertEquals(response, JSONObject.parseObject(result, Response.class));
+    }
+    
+    @Test
+    public void testQueryOrdersByAccountAndTravelDate() throws Exception {
+        // Create test request object
+        OrderByAccountAndDateRangeInfo queryInfo = new OrderByAccountAndDateRangeInfo();
+        queryInfo.setAccountId("user_id_1");
+        queryInfo.setStartDate(new Date());
+        queryInfo.setEndDate(new Date(System.currentTimeMillis() + 86400000)); // next day
+        
+        // Mock service response
+        Mockito.when(orderService.queryOrdersByAccountAndTravelDate(
+            Mockito.anyString(), Mockito.any(Date.class), Mockito.any(Date.class), Mockito.any(HttpHeaders.class)))
+            .thenReturn(response);
+        
+        // Convert request to JSON and perform request
+        String requestJson = JSONObject.toJSONString(queryInfo);
+        String result = mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/orderservice/order/byDate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        
+        // Verify response
         Assert.assertEquals(response, JSONObject.parseObject(result, Response.class));
     }
 
