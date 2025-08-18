@@ -1,11 +1,14 @@
 package assurance.repository;
 
 import assurance.entity.Assurance;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import javax.transaction.Transactional;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -55,4 +58,13 @@ public interface AssuranceRepository  extends CrudRepository<Assurance, String> 
      */
     @Override
     ArrayList<Assurance> findAll();
+
+    /**
+     * find all by order id with pagination
+     *
+     * @param orderIds collection of order ids
+     * @param pageable page to return
+     * @return Page<Assurance>
+     */
+    Page<Assurance> findAssurancesByOrderIdIn(Collection<String> orderIds, Pageable pageable);
 }

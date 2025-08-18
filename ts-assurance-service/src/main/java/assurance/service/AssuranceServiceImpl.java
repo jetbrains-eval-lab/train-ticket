@@ -2,17 +2,29 @@ package assurance.service;
 
 import assurance.entity.*;
 import assurance.repository.AssuranceRepository;
+import com.alibaba.fastjson.JSONObject;
+import edu.fudan.common.entity.Order;
 import edu.fudan.common.util.Response;
+import order.entity.OrderInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author fdse
@@ -20,8 +32,15 @@ import java.util.UUID;
 @Service
 public class AssuranceServiceImpl implements AssuranceService {
 
+    private String getServiceUrl(String serviceName) {
+        return "http://" + serviceName;
+    }
+
     @Autowired
     private AssuranceRepository assuranceRepository;
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AssuranceServiceImpl.class);
 
@@ -96,7 +115,7 @@ public class AssuranceServiceImpl implements AssuranceService {
     @Override
     public Response modify(String assuranceId, String orderId, int typeIndex, HttpHeaders headers) {
         Response oldAssuranceResponse = findAssuranceById(UUID.fromString(assuranceId), headers);
-        Assurance oldAssurance =  ((Optional<Assurance>)oldAssuranceResponse.getData()).get();
+        Assurance oldAssurance = ((Optional<Assurance>) oldAssuranceResponse.getData()).get();
         if (oldAssurance == null) {
             AssuranceServiceImpl.LOGGER.error("[modify][ModifyAssurance Fail][Assurance not found][assuranceId: {}, orderId: {}, typeIndex: {}]", assuranceId, orderId, typeIndex);
             return new Response<>(0, "Fail.Assurance not found.", null);
@@ -120,13 +139,7 @@ public class AssuranceServiceImpl implements AssuranceService {
         if (as != null && !as.isEmpty()) {
             ArrayList<PlainAssurance> result = new ArrayList<>();
             for (Assurance a : as) {
-                PlainAssurance pa = new PlainAssurance();
-                pa.setId(a.getId());
-                pa.setOrderId(a.getOrderId());
-                pa.setTypeIndex(a.getType().getIndex());
-                pa.setTypeName(a.getType().getName());
-                pa.setTypePrice(a.getType().getPrice());
-                result.add(pa);
+                result.add(toPlainAssurance(a));
             }
             AssuranceServiceImpl.LOGGER.info("[getAllAssurances][find all assurance success][list size: {}]", as.size());
             return new Response<>(1, "Success", result);
@@ -134,6 +147,44 @@ public class AssuranceServiceImpl implements AssuranceService {
             AssuranceServiceImpl.LOGGER.warn("[getAllAssurances][find all assurance][No content]");
             return new Response<>(0, "No Content, Assurance is empty", null);
         }
+    }
+
+    @Override
+    public Page<PlainAssurance> getUserAssurancesPage(UUID userId, Integer page, Integer size, HttpHeaders headers) {
+        int p = (page == null || page < 0) ? 0 : page;
+        int s = (size == null || size <= 0) ? 10 : size;
+        Pageable pageable = PageRequest.of(p, s);
+        List<String> orderIds = getOrders(userId, headers).stream().map(Order::getId).collect(Collectors.toList());
+        Page<Assurance> pageAssurance = assuranceRepository.findAssurancesByOrderIdIn(orderIds, pageable);
+        AssuranceServiceImpl.LOGGER.info("[getUserAssurancesPage][find user's assurance page][page: {}, size: {}, total: {}]", p, s, pageAssurance.getTotalElements());
+        return pageAssurance.map(this::toPlainAssurance);
+    }
+
+    public ArrayList<Order> getOrders(UUID accountId, HttpHeaders httpHeaders) {
+        AssuranceServiceImpl.LOGGER.info("[getOrder][Assurance Service][Get Order By User]");
+        OrderInfo orderInfo = new OrderInfo();
+        orderInfo.setLoginId(accountId.toString());
+        String requestJson = JSONObject.toJSONString(orderInfo);
+        HttpEntity orderRequestEntity = new HttpEntity(requestJson, httpHeaders);
+        String user_service_url = getServiceUrl("ts-order-service");
+        ResponseEntity<Response<ArrayList<Order>>> postOrders = restTemplate.exchange(
+                user_service_url + "/api/v1/orderservice/order/query",
+                HttpMethod.POST,
+                orderRequestEntity,
+                new ParameterizedTypeReference<Response<ArrayList<Order>>>() {
+                });
+        Response<ArrayList<Order>> result = postOrders.getBody();
+        return result != null ? result.getData() : null;
+    }
+
+    private PlainAssurance toPlainAssurance(Assurance a) {
+        PlainAssurance pa = new PlainAssurance();
+        pa.setId(a.getId());
+        pa.setOrderId(a.getOrderId());
+        pa.setTypeIndex(a.getType().getIndex());
+        pa.setTypeName(a.getType().getName());
+        pa.setTypePrice(a.getType().getPrice());
+        return pa;
     }
 
     @Override
