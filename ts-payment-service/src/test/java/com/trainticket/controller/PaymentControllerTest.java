@@ -74,4 +74,34 @@ public class PaymentControllerTest {
         Assert.assertEquals(response, JSONObject.parseObject(result, Response.class));
     }
 
+    @Test
+    public void testSearch() throws Exception {
+        Mockito.when(
+                service.searchByUserAndDateRange(
+                        Mockito.anyString(),   // userId
+                        Mockito.anyString(),   // startDate
+                        Mockito.anyString(),   // endDate
+                        Mockito.anyInt(),      // page
+                        Mockito.anyInt(),      // size
+                        Mockito.any(HttpHeaders.class)
+                )
+        ).thenReturn(response);
+
+        String result = mockMvc.perform(
+                        MockMvcRequestBuilders.get("/api/v1/paymentservice/payment/search")
+                                .param("userId", "testUser")
+                                .param("startDate", "2025-01-01")
+                                .param("endDate", "2025-01-31")
+                                .param("page", "0")
+                                .param("size", "10")
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Assert.assertEquals(response, JSONObject.parseObject(result, Response.class));
+    }
+
 }
