@@ -9,6 +9,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -39,11 +40,15 @@ public class Payment {
     @Column(name = "payment_price")
     private String price;
 
+    @Column(name = "payment_time")
+    private Instant paymentTime;
+
     public Payment(){
         this.id = UUID.randomUUID().toString();
         this.orderId = "";
         this.userId = "";
         this.price = "";
+        this.paymentTime = null;
     }
 
 }

@@ -8,11 +8,19 @@ import edu.fudan.common.util.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
+
+import static org.springframework.data.domain.PageRequest.of;
+import static org.springframework.data.domain.Sort.by;
 
 /**
  * @author  Administrator
@@ -37,6 +45,7 @@ public class PaymentServiceImpl implements PaymentService{
             payment.setOrderId(info.getOrderId());
             payment.setPrice(info.getPrice());
             payment.setUserId(info.getUserId());
+            payment.setPaymentTime(Instant.now());
             paymentRepository.save(payment);
             return new Response<>(1, "Pay Success", null);
         }else{
@@ -76,4 +85,44 @@ public class PaymentServiceImpl implements PaymentService{
             PaymentServiceImpl.LOGGER.info("[initPayment][Init Payment Already Exists][PaymentId: {}]", payment.getId());
         }
     }
+
+    @Override
+    public Response searchByUserAndDateRange(String userId, String startDate, String endDate, int page, int size, HttpHeaders headers) {
+        Instant start = parseDateToInstant(startDate, false);
+        Instant end = parseDateToInstant(endDate, true);
+        if (userId == null || userId.trim().isEmpty()) {
+            return new Response<>(0, "userId must not be blank", null);
+        }
+        if (start == null || end == null) {
+            return new Response<>(0, "startDate and endDate must not be null", null);
+        }
+        if (end.isBefore(start)) {
+            return new Response<>(0, "endDate must be on or after startDate", null);
+        }
+        if (page < 0) {
+            return new Response<>(0, "page must be >= 0", null);
+        }
+        if (size <= 0 || size > 1000) {
+            return new Response<>(0, "size must be between 1 and 1000", null);
+        }
+        Pageable pageable = of(page, size, by("paymentTime").descending());
+        Page<Payment> result = paymentRepository.findByUserIdAndPaymentTimeBetween(userId, start, end, pageable);
+        return new Response<>(1, "Query Success", result);
+    }
+
+    private Instant parseDateToInstant(String input, boolean endOfDay) {
+        if (input == null) {
+            return null;
+        }
+        try {
+            LocalDate date = LocalDate.parse(input, DateTimeFormatter.ISO_LOCAL_DATE);
+            LocalDateTime dateTime = endOfDay
+                    ? date.atTime(LocalTime.MAX)
+                    : date.atStartOfDay();
+            return dateTime.toInstant(ZoneOffset.UTC);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
 }
